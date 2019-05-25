@@ -9,16 +9,15 @@ int voltagePINS[] = {54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68,
 int drainPINS[] = {22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52};
 int statusLightPINS[] = {23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51};
 long startTimes[16];
+int batteryStatus[16];
 long currentMillis;
-int batteryStatus[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int batVoltage;
 
 void setup() {
-  //Analog pins to read battery voltage.
   for (int i = 0; i <= 15; i++) {
-    pinMode(voltagePINS[i], INPUT);
-    pinMode(drainPINS[i], OUTPUT);
-    pinMode(statusLightPINS[i], OUTPUT);
+    pinMode(voltagePINS[i], INPUT);   //Analog pins to read battery voltage.
+    pinMode(drainPINS[i], OUTPUT);   //digital pins to turn on MOSFET and drain batteries.
+    pinMode(statusLightPINS[i], OUTPUT);  // LEDs to indicate status
   }
 }
 
@@ -28,6 +27,11 @@ void loop() {
 
   for (int i = 0; i <= 15; i++) {  // iterate through all 16 batteries.
     batVoltage = analogRead(voltagePINS[i]);
+    
+    if (batVoltage < 5) { //assume no battery present.
+      batteryStatus[i] = EMPTY;
+      digitalWrite(statusLightPINS[i],LOW);
+    }    
 
     if (batteryStatus[i] == EMPTY) {
       if ((batVoltage > (threshVoltToStart*204.6)) && (batVoltage < (4.5*204.6))){ // battery seems charged! Set var to test.
@@ -44,11 +48,6 @@ void loop() {
         //TODO make statusLightPINS[i] blink!
       }
     }
-    
-    if (batVoltage < 5) { //assume battery removed.
-      batteryStatus[i] = EMPTY;
-      digitalWrite(statusLightPINS[i],LOW);
-    }    
 
     if (batteryStatus[i] == DRAINING) {
       if (batVoltage < (voltAtDrained*204.6)){
@@ -68,6 +67,7 @@ void loop() {
         Serial.println(" volts.");
       }    
     }        
+    delay(1000);
     
   }
 }
