@@ -2,12 +2,14 @@
 #define DRAINING 1
 #define DRAINED 2
 #define FAULT 3
-#define threshVoltToStart 4
-#define voltAtDrained 3
+#define threshVoltToStart 3.9
+#define voltAtDrained 3.75
 
-int voltagePINS[] = {54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69};
+int voltagePINS[] = {A0, A1, A2, A3, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A1};
 int drainPINS[] = {22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52};
 int statusLightPINS[] = {23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51};
+
+int ampHours[16];
 long startTimes[16];
 int batteryStatus[16];
 long currentMillis;
@@ -18,7 +20,11 @@ void setup() {
     pinMode(voltagePINS[i], INPUT);   //Analog pins to read battery voltage.
     pinMode(drainPINS[i], OUTPUT);   //digital pins to turn on MOSFET and drain batteries.
     pinMode(statusLightPINS[i], OUTPUT);  // LEDs to indicate status
+    digitalWrite(drainPINS[i], LOW);
+    digitalWrite(statusLightPINS[i], LOW);
   }
+  Serial.begin(9600);
+  Serial.println("18650 Drainer");
 }
 
 void loop() {
@@ -26,11 +32,19 @@ void loop() {
   currentMillis = millis();
 
   for (int i = 0; i <= 15; i++) {  // iterate through all 16 batteries.
+  }
+  int i = 1;
     batVoltage = analogRead(voltagePINS[i]);
     
     if (batVoltage < 5) { //assume no battery present.
-      batteryStatus[i] = EMPTY;
+      if (batteryStatus[i] != EMPTY){
+        Serial.print("Battery ");
+        Serial.print(i);
+        Serial.println(" empty.");
+        batteryStatus[i] = EMPTY;
+      }
       digitalWrite(statusLightPINS[i],LOW);
+      digitalWrite(drainPINS[i],LOW);
     }    
 
     if (batteryStatus[i] == EMPTY) {
@@ -39,12 +53,18 @@ void loop() {
         startTimes[i] = currentMillis;
         digitalWrite(drainPINS[i],HIGH);
       }
-      if ((batVoltage >5) && (threshVoltToStart*204.6> batVoltage)){ //Battery not charged enough.
+      if ((batVoltage >5) && ((threshVoltToStart*204.6)> batVoltage)){ //Battery not charged enough.
         batteryStatus[i] = FAULT;
+        Serial.print("Battery ");
+        Serial.print(i);
+        Serial.println(" not charged enough");
         //TODO make statusLightPINS[i] blink!
       }      
       if (batVoltage > (4.5*204.6)){ //Voltage too high?!!
         batteryStatus[i] = FAULT;
+        Serial.print("Battery ");
+        Serial.print(i);
+        Serial.println(" above 4.5V?!");
         //TODO make statusLightPINS[i] blink!
       }
     }
@@ -57,7 +77,7 @@ void loop() {
         Serial.print("battery ");
         Serial.print(i);
         Serial.print(": ");
-        Serial.print(currentMillis - startTimes[i]/1000);
+        Serial.print((currentMillis - startTimes[i])/1000);
         Serial.println(" secs to drained.");
       }else{
         Serial.print("battery ");
@@ -67,7 +87,5 @@ void loop() {
         Serial.println(" volts.");
       }    
     }        
-    delay(1000);
-    
-  }
+    delay(1000);   
 }
